@@ -126,7 +126,7 @@ class UpgradeSelected(BaseFeature):
     def affected(self, env_name):
         """Whether environment was affected by upgraded packages."""
         if not self.active:
-            return True
+            return False
         return any(
             self.has_package(env_name, package_name)
             for package_name in self.package_names
