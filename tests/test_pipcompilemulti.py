@@ -67,12 +67,10 @@ def test_forbid_post_releases():
     ('test.in', {'base'}),
     ('local.in', {'test'}),
 ])
-def test_parse_references(name, refs):
+def test_parse_relations(name, refs):
     """Check references are parsed for sample files"""
     env = Environment('')
-    result = env.parse_references(
-        os.path.join('requirements', name)
-    )
+    result = env.parse_relations(os.path.join('requirements', name))['refs']
     assert result == refs
 
 

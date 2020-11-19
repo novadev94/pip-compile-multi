@@ -2,6 +2,7 @@
 
 import os
 import glob
+import itertools
 
 from toposort import toposort_flatten
 from .environment import Environment
@@ -34,8 +35,8 @@ def discover(glob_pattern):
         extract_env_name(path): path
         for path in in_paths
     }
-    return order_by_refs([
-        {'name': name, 'refs': Environment.parse_references(in_path)}
+    return order_by_relations([
+        dict(Environment.parse_relations(in_path), name=name)
         for name, in_path in names.items()
     ])
 
@@ -45,13 +46,13 @@ def extract_env_name(file_path):
     return os.path.splitext(os.path.basename(file_path))[0]
 
 
-def order_by_refs(envs):
+def order_by_relations(envs):
     """
     Return topologicaly sorted list of environments.
     I.e. all referenced environments are placed before their references.
     """
     topology = {
-        env['name']: set(env['refs'])
+        env['name']: set(itertools.chain(env['refs'], env['cons']))
         for env in envs
     }
     by_name = {

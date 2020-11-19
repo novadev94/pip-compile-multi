@@ -48,6 +48,8 @@ In big teams it might be a good idea to have this check in ``tox.ini``:
 
 import hashlib
 import logging
+import os.path
+import re
 
 from .discover import discover
 from .environment import Environment
@@ -80,6 +82,15 @@ def verify_environments():
     return success
 
 
+def generate_hash(file_path):
+    with open(file_path, 'rb') as fp:
+        lines = fp.readlines()
+    pattern = re.compile(r'^#|\s+#')
+    lines = (pattern.split(line)[0].strip() for line in lines)
+    content = '\n'.join(sorted(line for line in lines if line))
+    return hashlib.sha1(content.encode('utf-8')).hexdigest()
+
+
 def generate_hash_comment(file_path):
     """
     Read file with given file_path and return string of format
@@ -88,9 +99,7 @@ def generate_hash_comment(file_path):
 
     which is hex representation of SHA1 file content hash
     """
-    with open(file_path, 'rb') as fp:
-        hexdigest = hashlib.sha1(fp.read().strip()).hexdigest()
-    return "# SHA1:{0}\n".format(hexdigest)
+    return "# SHA1:{0}\n".format(generate_hash(file_path))
 
 
 def parse_hash_comment(file_path):
@@ -100,8 +109,9 @@ def parse_hash_comment(file_path):
 
         # SHA1:da39a3ee5e6b4b0d3255bfef95601890afd80709
     """
-    with open(file_path) as fp:
-        for line in fp:
-            if line.startswith("# SHA1:"):
-                return line
+    if os.path.isfile(file_path):
+        with open(file_path) as fp:
+            for line in fp:
+                if line.startswith("# SHA1:"):
+                    return line
     return ''

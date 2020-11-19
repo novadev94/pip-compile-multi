@@ -7,6 +7,30 @@ import itertools
 logger = logging.getLogger("pip-compile-multi")
 
 
+def recursive_union(envs, name, key):
+    refs_by_name = {
+        env['name']: set(env[key])
+        for env in envs
+    }
+    refs = refs_by_name[name]
+    if refs:
+        indirect_refs = set(
+            subref
+            for ref in refs
+            for subref in recursive_union(envs, ref, key)
+        )
+    else:
+        indirect_refs = set()
+    return set.union(refs, indirect_refs)
+
+
+def recursive_relations(envs, name):
+    return set(itertools.chain.from_iterable(
+        recursive_union(envs, name, key)
+        for key in ('refs', 'cons')
+    ))
+
+
 def recursive_refs(envs, name):
     """
     Return set of recursive refs for given env name
@@ -19,20 +43,22 @@ def recursive_refs(envs, name):
     >>> local_refs == ['base', 'test']
     True
     """
-    refs_by_name = {
-        env['name']: set(env['refs'])
-        for env in envs
-    }
-    refs = refs_by_name[name]
-    if refs:
-        indirect_refs = set(
-            subref
-            for ref in refs
-            for subref in recursive_refs(envs, ref)
-        )
-    else:
-        indirect_refs = set()
-    return set.union(refs, indirect_refs)
+    return recursive_union(envs, name, 'refs')
+
+
+def recursive_cons(envs, name):
+    """
+    Return set of recursive cons for given env name
+
+    >>> local_cons = sorted(recursive_cons([
+    ...     {'name': 'base', 'cons': []},
+    ...     {'name': 'test', 'cons': ['base']},
+    ...     {'name': 'local', 'cons': ['test']},
+    ... ], 'local'))
+    >>> local_cons == ['base', 'test']
+    True
+    """
+    return recursive_union(envs, name, 'cons')
 
 
 def merged_packages(env_packages, names):

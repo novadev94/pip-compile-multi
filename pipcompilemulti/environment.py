@@ -17,8 +17,9 @@ class Environment(object):
     """requirements file"""
 
     RE_REF = re.compile(r'^(?:-r|--requirement)\s*(?P<path>\S+).*$')
+    RE_CON = re.compile(r'^(?:-c|--constraint)\s*(?P<path>\S+).*$')
 
-    def __init__(self, name, deduplicator=None):
+    def __init__(self, name, deduplicator=None, recompiled_envs=None):
         """
         name - name of the environment, e.g. base, test
         """
@@ -27,6 +28,9 @@ class Environment(object):
         self.ignore = self._dedup.ignored_packages(name)
         self.packages = {}
         self._outfile_pkg_names = None
+        if recompiled_envs is None:
+            recompiled_envs = set()
+        self._recompiled_envs = recompiled_envs
 
     def maybe_create_lockfile(self):
         """
@@ -35,13 +39,30 @@ class Environment(object):
         Populate package ignore set in either case and return
         boolean indicating whether outfile was written.
         """
-        logger.info("Locking %s to %s. References: %r",
-                    self.infile, self.outfile, sorted(self._dedup.recursive_refs(self.name)))
-        if not FEATURES.affected(self.name):
+        logger.info(
+            "Locking %s to %s. References: %r; Constraints: %r",
+            self.infile, self.outfile,
+            sorted(self._dedup.recursive_refs(self.name)),
+            sorted(self._dedup.recursive_cons(self.name)),
+        )
+        recompile = (
+            FEATURES.affected(self.name)
+            or self._dedup.need_recompile(self.name)
+            or self.is_outdated()
+        )
+        if recompile:
+            logger.debug('Compiling %s', self.outfile)
+            self.create_lockfile()
+        else:
+            logger.debug('Fixing %s', self.outfile)
             self.fix_lockfile()  # populate ignore set
-            return False
-        self.create_lockfile()
-        return True
+        return recompile
+
+    def is_outdated(self):
+        from .verify import generate_hash_comment, parse_hash_comment
+        current_comment = generate_hash_comment(self.infile)
+        existing_comment = parse_hash_comment(self.outfile)
+        return current_comment != existing_comment
 
     def create_lockfile(self):
         """
@@ -66,25 +87,31 @@ class Environment(object):
             raise RuntimeError("Failed to pip-compile {0}".format(self.infile))
 
     @classmethod
-    def parse_references(cls, filename):
+    def parse_relations(cls, filename):
         """
         Read filename line by line searching for pattern:
 
         -r file.in
         or
         --requirement file.in
+        or
+        -c file.in
+        or
+        --constraint file.in
 
-        return set of matched file names without extension.
-        E.g. ['file']
+        return a dict of key => set of matched file names without extension.
+        E.g. {'refs': ['file1'], 'cons': ['file2']}
         """
-        references = set()
+        patterns = {'refs': cls.RE_REF, 'cons': cls.RE_CON}
+        dependencies = {name: set() for name in patterns.keys()}
         for line in open(filename):
-            matched = cls.RE_REF.match(line)
-            if matched:
-                reference = matched.group('path')
-                reference_base = os.path.splitext(reference)[0]
-                references.add(reference_base)
-        return references
+            for name, pattern in patterns.items():
+                matched = pattern.match(line)
+                if matched:
+                    reference = matched.group('path')
+                    reference_base = os.path.splitext(reference)[0]
+                    dependencies[name].add(reference_base)
+        return dependencies
 
     @property
     def infile(self):

@@ -109,9 +109,9 @@ class FeaturesController:
 
     def affected(self, env_name):
         """Whether environment was affected by upgrade command."""
-        if self.upgrade_all.enabled:
+        if self.upgrade_all.enabled or self.upgrade_selected.affected(env_name):
             return True
-        return self.upgrade_selected.affected(env_name)
+        return False
 
     def included(self, env_name):
         """Whether environment is included directly or by reference."""
