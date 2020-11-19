@@ -3,9 +3,7 @@
 import itertools
 import logging
 
-from pipcompilemulti.utils import (
-    recursive_relations, recursive_cons, recursive_refs, merged_packages
-)
+from pipcompilemulti.utils import recursive_relations, merged_packages
 
 
 logger = logging.getLogger("pip-compile-multi")
@@ -33,7 +31,7 @@ class PackageDeduplicator:
             return {}
         return merged_packages(
             self.env_packages,
-            recursive_relations(self.env_confs, env_name)
+            recursive_relations(self.env_confs, env_name)['refs'],
         )
 
     def mark_recompiled(self, env_name):
@@ -43,16 +41,14 @@ class PackageDeduplicator:
         if self.env_confs is None:
             return True
         relations = recursive_relations(self.env_confs, env_name)
-        return any(rel in self._recompiled_envs for rel in relations)
+        return any(
+            rel in self._recompiled_envs
+            for rels in relations.values()
+            for rel in rels
+        )
 
-    def recursive_refs(self, env_name):
-        """Return recursive list of environment names referenced by env_name."""
+    def recursive_relations(self, env_name):
+        """Return recursive list of environment names referenced by or constraining env_name."""
         if self.env_confs is None:
-            return {}
-        return recursive_refs(self.env_confs, env_name)
-
-    def recursive_cons(self, env_name):
-        """Return recursive list of environment names constraining env_name."""
-        if self.env_confs is None:
-            return {}
-        return recursive_cons(self.env_confs, env_name)
+            return {'refs': (), 'cons': ()}
+        return recursive_relations(self.env_confs, env_name)

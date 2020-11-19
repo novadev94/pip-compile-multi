@@ -8,7 +8,7 @@ To limit compilation to only a subset, use
 .. code-block:: text
 
     -n, --only-name TEXT        Compile only for passed environment names and
-                                their references. Can be supplied multiple
+                                their relations. Can be supplied multiple
                                 times.
 
 For example, to compile one file under Python2.7 and another under Python3.6, run:
@@ -24,7 +24,7 @@ For example, to compile one file under Python2.7 and another under Python3.6, ru
 .. automodule:: pipcompilemulti.features.forbid_post
 """
 
-from pipcompilemulti.utils import recursive_refs
+from pipcompilemulti.utils import recursive_relations
 from .base import BaseFeature, ClickOption
 
 
@@ -37,7 +37,7 @@ class LimitEnvs(BaseFeature):
         short_option='-n',
         multiple=True,
         help_text='Compile only for passed environment names and their '
-                  'references. Can be supplied multiple times.',
+                  'relations. Can be supplied multiple times.',
     )
 
     def __init__(self):
@@ -50,17 +50,17 @@ class LimitEnvs(BaseFeature):
 
     def on_discover(self, env_confs):
         """Save set of all (recursive) included environments."""
-        included_and_refs = self.direct_envs
+        included_and_rels = self.direct_envs
         if not self.direct_envs:
             # No limit means all envs included:
             self._all_envs = [env['name'] for env in env_confs]
             return
-        for name in set(included_and_refs):
-            included_and_refs.update(
-                recursive_refs(env_confs, name)
-            )
-        self._all_envs = included_and_refs
+        for name in set(included_and_rels):
+            relations = recursive_relations(env_confs, name)
+            for rels in relations.values():
+                included_and_rels.update(rels)
+        self._all_envs = included_and_rels
 
     def included(self, env_name):
-        """Whether environment is included directly or by reference."""
+        """Whether environment is included directly or by relations."""
         return env_name in self._all_envs

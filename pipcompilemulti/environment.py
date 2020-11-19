@@ -39,11 +39,12 @@ class Environment(object):
         Populate package ignore set in either case and return
         boolean indicating whether outfile was written.
         """
+        relations = self._dedup.recursive_relations(self.name)
         logger.info(
             "Locking %s to %s. References: %r; Constraints: %r",
             self.infile, self.outfile,
-            sorted(self._dedup.recursive_refs(self.name)),
-            sorted(self._dedup.recursive_cons(self.name)),
+            sorted(relations['refs']),
+            sorted(relations['cons']),
         )
         recompile = (
             FEATURES.affected(self.name)

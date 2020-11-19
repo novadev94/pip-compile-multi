@@ -6,6 +6,7 @@ import itertools
 
 from toposort import toposort_flatten
 from .environment import Environment
+from .utils import relation_keys
 
 
 __all__ = ('discover',)
@@ -49,17 +50,15 @@ def extract_env_name(file_path):
 def order_by_relations(envs):
     """
     Return topologicaly sorted list of environments.
-    I.e. all referenced environments are placed before their references.
+    I.e. all referenced or constraining environments are placed before their relatives.
     """
     topology = {
-        env['name']: set(itertools.chain(env['refs'], env['cons']))
+        env['name']: set(
+            itertools.chain.from_iterable(
+                env[key] for key in relation_keys
+            )
+        )
         for env in envs
     }
-    by_name = {
-        env['name']: env
-        for env in envs
-    }
-    return [
-        by_name[name]
-        for name in toposort_flatten(topology)
-    ]
+    by_name = {env['name']: env for env in envs}
+    return [by_name[name] for name in toposort_flatten(topology)]

@@ -12,7 +12,7 @@ from pipcompilemulti.environment import Environment
 from pipcompilemulti.dependency import Dependency
 from pipcompilemulti.options import OPTIONS
 from pipcompilemulti.deduplicate import PackageDeduplicator
-from pipcompilemulti.utils import merged_packages, reference_cluster
+from pipcompilemulti.utils import merged_packages, relation_cluster
 from pipcompilemulti.features.header import DEFAULT_HEADER
 
 
@@ -127,10 +127,10 @@ def test_serialize_hashes():
     )
 
 
-def test_reference_cluster():
+def test_relation_cluster():
     """Check cluster propagets both ways"""
     for entry in ['base', 'test', 'local', 'doc']:
-        cluster = reference_cluster([
+        cluster = relation_cluster([
             {'name': 'base', 'refs': []},
             {'name': 'test', 'refs': ['base']},
             {'name': 'local', 'refs': ['test']},

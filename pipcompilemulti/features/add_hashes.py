@@ -31,10 +31,11 @@ Example output:
 
 ``pip`` requires all packages to have hashes if at least one has it.
 ``pip-compile-multi`` will recursively propagate this option to all
-environments that are referencing or referenced by selected environments.
+environments that are referencing or referenced or constraining or constraint
+by selected environments.
 """  # noqa: E501
 
-from pipcompilemulti.utils import reference_cluster
+from pipcompilemulti.utils import relation_cluster
 from .base import BaseFeature, ClickOption
 
 
@@ -67,7 +68,7 @@ class AddHashes(BaseFeature):
     )
 
     def __init__(self):
-        self._hashed_by_reference = None
+        self._hashed_by_relation = None
 
     @property
     def enabled_envs(self):
@@ -76,15 +77,15 @@ class AddHashes(BaseFeature):
 
     def on_discover(self, env_confs):
         """Save environment names that need hashing."""
-        self._hashed_by_reference = set()
+        self._hashed_by_relation = set()
         for name in self.enabled_envs:
-            self._hashed_by_reference.update(
-                reference_cluster(env_confs, name)
+            self._hashed_by_relation.update(
+                relation_cluster(env_confs, name)
             )
 
     def _needs_hashes(self, env_name):
-        assert self._hashed_by_reference is not None
-        return env_name in self._hashed_by_reference
+        assert self._hashed_by_relation is not None
+        return env_name in self._hashed_by_relation
 
     def pin_options(self, env_name):
         """Return --generate-hashes if env requires it."""
