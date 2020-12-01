@@ -4,7 +4,7 @@ import os
 from setuptools import setup, find_packages
 
 
-VERSION = "1.5.9.2"
+VERSION = "1.5.9.3"
 
 
 README = """
