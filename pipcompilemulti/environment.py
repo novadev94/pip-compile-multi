@@ -207,9 +207,9 @@ class Environment(object):
 
     def add_relations(self, relations):
         """Add relations to other_names in outfile"""
-        all_names = [
-            (key, relations[key]) for key in relation_keys if relations[key]
-        ]
+        # We don't add constraints to those files because pip-sync are dumb...
+        keys = ['refs']
+        all_names = [(key, relations[key]) for key in keys if relations[key]]
         if not all_names:
             # Skip on empty list
             return
