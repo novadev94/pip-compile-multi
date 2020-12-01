@@ -22,5 +22,5 @@ def recompile():
             # Only munge lockfile if it was written.
             header_text = generate_hash_comment(env.infile) + FEATURES.get_header_text()
             env.replace_header(header_text)
-            env.add_references(conf['refs'])
+            env.add_relations(conf)
             deduplicator.mark_recompiled(env.name)

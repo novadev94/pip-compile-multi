@@ -8,6 +8,7 @@ import subprocess
 from .dependency import Dependency
 from .features import FEATURES
 from .deduplicate import PackageDeduplicator
+from .utils import relation_keys
 
 
 logger = logging.getLogger("pip-compile-multi")
@@ -204,21 +205,29 @@ class Environment(object):
             return dep.serialize()
         return line.strip()
 
-    def add_references(self, other_names):
-        """Add references to other_names in outfile"""
-        if not other_names:
+    def add_relations(self, relations):
+        """Add relations to other_names in outfile"""
+        all_names = [
+            (key, relations[key]) for key in relation_keys if relations[key]
+        ]
+        if not all_names:
             # Skip on empty list
             return
         with open(self.outfile, 'rt') as fp:
             header, body = self.split_header(fp)
         with open(self.outfile, 'wt') as fp:
             fp.writelines(header)
-            fp.writelines(
-                '-r {0}\n'.format(
-                    FEATURES.compose_output_file_name(other_name)
+            for key, rels in all_names:
+                if key == 'cons':
+                    prefix = '-c'
+                elif key == 'refs':
+                    prefix = '-r'
+                fp.writelines(
+                    '{0} {1}\n'.format(
+                        prefix, FEATURES.compose_output_file_name(name)
+                    )
+                    for name in sorted(rels)
                 )
-                for other_name in sorted(other_names)
-            )
             fp.writelines(body)
 
     @staticmethod

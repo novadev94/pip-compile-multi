@@ -2,10 +2,11 @@
 
 import logging
 import itertools
+import collections
 
 
 logger = logging.getLogger("pip-compile-multi")
-relation_keys = ('refs', 'cons')
+relation_keys = ('cons', 'refs')
 
 
 def _recursive_union(envs, name, key):
@@ -25,7 +26,7 @@ def _recursive_union(envs, name, key):
     return set.union(rels, indirect_rels)
 
 
-def recursive_relations(envs, name):
+def recursive_relations(envs, starting):
     """
     Return dict key => set of recursive relations for given env name
 
@@ -37,10 +38,25 @@ def recursive_relations(envs, name):
     >>> local_refs == {'refs': ['base', 'test'], 'cons': []}
     True
     """
-    return {
-        key: _recursive_union(envs, name, key)
-        for key in relation_keys
-    }
+    rels_by_name = {env['name']: env for env in envs}
+    visited = {key: set() for key in ('all', 'refs', 'cons')}
+    queue = collections.deque()
+
+    visited['all'].add(starting)
+    queue.append(starting)
+    while queue:
+        name = queue.popleft()
+        is_refs = name == starting or name in visited['refs']
+        for key in relation_keys:
+            target = 'refs' if (is_refs and key == 'refs') else 'cons'
+            for relation in rels_by_name[name][key]:
+                if relation not in visited['all']:
+                    visited['all'].add(relation)
+                    visited[target].add(relation)
+                    queue.append(relation)
+    visited['cons'] -= visited['refs']
+    visited.pop('all')
+    return visited
 
 
 def merged_packages(env_packages, names):
