@@ -9,21 +9,18 @@ logger = logging.getLogger("pip-compile-multi")
 relation_keys = ('cons', 'refs')
 
 
-def _recursive_union(envs, name, key):
-    rels_by_name = {
-        env['name']: set(env[key])
-        for env in envs
-    }
-    rels = rels_by_name[name]
-    if rels:
-        indirect_rels = set(
-            subrel
-            for rel in rels
-            for subrel in _recursive_union(envs, rel, key)
-        )
-    else:
-        indirect_rels = set()
-    return set.union(rels, indirect_rels)
+def _recursive_visit(rels_by_name, startings, keys=relation_keys):
+    visited = set(startings)
+    queue = collections.deque(startings)
+    while queue:
+        name = queue.popleft()
+        relations = rels_by_name[name]
+        for key in keys:
+            for related in relations[key]:
+                if related not in visited:
+                    visited.add(related)
+                    queue.append(related)
+    return visited
 
 
 def recursive_relations(envs, starting):
@@ -39,24 +36,12 @@ def recursive_relations(envs, starting):
     True
     """
     rels_by_name = {env['name']: env for env in envs}
-    visited = {key: set() for key in ('all', 'refs', 'cons')}
-    queue = collections.deque()
-
-    visited['all'].add(starting)
-    queue.append(starting)
-    while queue:
-        name = queue.popleft()
-        is_refs = name == starting or name in visited['refs']
-        for key in relation_keys:
-            target = 'refs' if (is_refs and key == 'refs') else 'cons'
-            for relation in rels_by_name[name][key]:
-                if relation not in visited['all']:
-                    visited['all'].add(relation)
-                    visited[target].add(relation)
-                    queue.append(relation)
-    visited['cons'] -= visited['refs']
-    visited.pop('all')
-    return visited
+    refs = _recursive_visit(rels_by_name, [starting], ['refs'])
+    cons = _recursive_visit(rels_by_name, refs)
+    cons -= refs
+    for rels in (refs, cons):
+        rels.discard(starting)
+    return {'refs': refs, 'cons': cons}
 
 
 def merged_packages(env_packages, names):
