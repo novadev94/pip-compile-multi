@@ -83,7 +83,7 @@ def verify_environments():
 
 
 def generate_hash(file_path):
-    with open(file_path, 'rb') as fp:
+    with open(file_path, 'rt') as fp:
         lines = fp.readlines()
     pattern = re.compile(r'^#|\s+#')
     lines = (pattern.split(line)[0].strip() for line in lines)
